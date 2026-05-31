@@ -1,7 +1,10 @@
-import { anthropic } from "@ai-sdk/anthropic"
+import { createGroq } from "@ai-sdk/groq"
 import { convertToModelMessages, streamText, UIMessage } from "ai"
 
 export const maxDuration = 60
+
+// Use Groq (free) for the chat - llama-3.3-70b is the same model Stocrates uses
+const groq = createGroq({ apiKey: process.env.GROQ_API_KEY })
 
 const SYSTEM = `You are Argus Intelligence — an AI investment analyst backed by real-time data scraped from Reddit investment communities, SEC EDGAR filings, Stocktwits, Seeking Alpha, and 20+ financial sources.
 
@@ -17,13 +20,16 @@ Key behaviors:
 
 export async function POST(req: Request) {
   const { messages, userProfile }: { messages: UIMessage[]; userProfile?: Record<string, unknown> } = await req.json()
+
   const systemWithProfile = userProfile
     ? `${SYSTEM}\n\nUser profile: Budget $${userProfile.budget ?? "unknown"}, Risk tolerance: ${userProfile.risk_tolerance ?? "moderate"}, Goal: ${userProfile.investing_goal ?? "not set"}, Halal filter: ${userProfile.halal_filter ? "ACTIVE — only recommend Shariah-compliant investments" : "off"}.`
     : SYSTEM
+
   const result = streamText({
-    model: anthropic("claude-opus-4-5"),
+    model: groq("llama-3.3-70b-versatile"),
     system: systemWithProfile,
     messages: await convertToModelMessages(messages),
   })
+
   return result.toUIMessageStreamResponse()
 }
