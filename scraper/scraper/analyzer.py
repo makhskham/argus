@@ -170,6 +170,7 @@ async def _call_ai_api(
     Call Claude or Groq API for high-quality analysis.
     Falls back automatically if one fails or has no credits.
     """
+    global _claude_out_of_credits
     content_parts = []
     for sig in signals:
         text = sig.get("title", "") or ""
@@ -205,7 +206,6 @@ async def _call_ai_api(
                 text_out = re.sub(r"```(?:json)?\n?", "", text_out).strip("`").strip()
                 return json.loads(text_out)
             elif "credit balance is too low" in r.text or "insufficient" in r.text.lower():
-                global _claude_out_of_credits
                 _claude_out_of_credits = True
                 log.warning("Claude: out of credits - switching permanently to Groq this session")
             else:
