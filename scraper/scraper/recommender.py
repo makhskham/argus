@@ -78,7 +78,14 @@ async def build_recommendations(
                     "niche_count": 0,
                 }
             td = ticker_data[ticker]
-            sentiment = row["sentiment"] or "neutral"
+            # Normalize sentiment to lowercase and map to our keys
+            raw = (row["sentiment"] or "neutral").lower().strip()
+            if raw in ("bullish", "bull", "positive"):
+                sentiment = "bull"
+            elif raw in ("bearish", "bear", "negative"):
+                sentiment = "bear"
+            else:
+                sentiment = "neutral"
             td[sentiment] += effective_weight
             td["total_weight"] += effective_weight
             td["sources"].add(row["source"] or "unknown")

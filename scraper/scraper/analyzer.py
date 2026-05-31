@@ -31,6 +31,9 @@ GROQ_API = "https://api.groq.com/openai/v1/chat/completions"
 
 BATCH_SIZE = 10
 
+# Session-level flag: once Claude is known out of credits, skip it entirely
+_claude_out_of_credits = False
+
 # Strong ticker pattern: $NVDA or all-caps 2-5 chars
 TICKER_RE = re.compile(r'\$([A-Z]{1,5})\b')
 TICKER_RE_BARE = re.compile(r'\b([A-Z]{2,5})\b')
@@ -178,8 +181,8 @@ async def _call_ai_api(
         )
     user_message = "\n\n---\n\n".join(content_parts)
 
-    # Try Claude first
-    if ANTHROPIC_KEY:
+    # Try Claude first (only if it has credits)
+    if ANTHROPIC_KEY and not _claude_out_of_credits:
         try:
             r = await client.post(
                 ANTHROPIC_API,
@@ -202,43 +205,53 @@ async def _call_ai_api(
                 text_out = re.sub(r"```(?:json)?\n?", "", text_out).strip("`").strip()
                 return json.loads(text_out)
             elif "credit balance is too low" in r.text or "insufficient" in r.text.lower():
-                log.warning("Claude: out of credits - falling back to Groq")
+                global _claude_out_of_credits
+                _claude_out_of_credits = True
+                log.warning("Claude: out of credits - switching permanently to Groq this session")
             else:
-                log.warning("Claude error %d - falling back to Groq", r.status_code)
+                log.warning("Claude error %d", r.status_code)
         except Exception as e:
-            log.warning("Claude failed (%s) - falling back to Groq", e)
+            log.warning("Claude failed (%s)", e)
 
-    # Try Groq (free tier)
+    # Groq (free tier) with retry backoff for rate limits
     if GROQ_KEY:
-        try:
-            r = await client.post(
-                GROQ_API,
-                headers={
-                    "Authorization": f"Bearer {GROQ_KEY}",
-                    "Content-Type": "application/json",
-                },
-                json={
-                    "model": GROQ_MODEL,
-                    "messages": [
-                        {"role": "system", "content": SYSTEM_PROMPT},
-                        {"role": "user", "content": user_message},
-                    ],
-                    "max_tokens": 4096,
-                    "temperature": 0.1,
-                },
-                timeout=60,
-            )
-            if r.status_code == 200:
-                data = r.json()
-                text_out = data["choices"][0]["message"]["content"].strip()
-                text_out = re.sub(r"```(?:json)?\n?", "", text_out).strip("`").strip()
-                return json.loads(text_out)
-            else:
-                log.warning("Groq error %d", r.status_code)
-        except Exception as e:
-            log.warning("Groq failed (%s)", e)
+        for attempt in range(4):  # up to 4 retries
+            try:
+                r = await client.post(
+                    GROQ_API,
+                    headers={
+                        "Authorization": f"Bearer {GROQ_KEY}",
+                        "Content-Type": "application/json",
+                    },
+                    json={
+                        "model": GROQ_MODEL,
+                        "messages": [
+                            {"role": "system", "content": SYSTEM_PROMPT},
+                            {"role": "user", "content": user_message},
+                        ],
+                        "max_tokens": 4096,
+                        "temperature": 0.1,
+                    },
+                    timeout=60,
+                )
+                if r.status_code == 200:
+                    data = r.json()
+                    text_out = data["choices"][0]["message"]["content"].strip()
+                    text_out = re.sub(r"```(?:json)?\n?", "", text_out).strip("`").strip()
+                    return json.loads(text_out)
+                elif r.status_code == 429:
+                    # Rate limited - wait longer before retry
+                    wait = 3 * (attempt + 1)
+                    log.debug("Groq rate limit, waiting %ds (attempt %d)", wait, attempt + 1)
+                    await asyncio.sleep(wait)
+                else:
+                    log.warning("Groq error %d", r.status_code)
+                    break
+            except Exception as e:
+                log.warning("Groq failed (%s)", e)
+                break
 
-    return []  # Both AI APIs failed, caller falls back to regex
+    return []  # All APIs failed, caller falls back to regex
 
 
 async def check_groq_credits(client: httpx.AsyncClient) -> bool:
@@ -397,7 +410,8 @@ async def run_analysis(
                     analyzed += n
                 log.info("  batch %d-%d: %d analyses stored",
                          i + 1, min(i + BATCH_SIZE, len(signals)), analyzed)
-                await asyncio.sleep(0.3)
+                # Groq free tier: 30 req/min. Sleep 2s between batches to stay under limit.
+                await asyncio.sleep(2)
     else:
         # Pure regex mode - fast, no API needed
         log.info("analysis: using regex mode (set GROQ_API_KEY for free AI analysis)")
