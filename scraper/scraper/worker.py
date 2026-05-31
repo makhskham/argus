@@ -28,6 +28,8 @@ from .seeking_alpha import scrape_latest_articles
 from .twitter import scrape_all_fintwit
 from .models import RawSignal
 from .velocity import calculate_velocity, detect_emerging_tickers
+from .analyzer import run_analysis
+from .recommender import build_recommendations
 
 load_dotenv()
 logging.basicConfig(
@@ -153,6 +155,22 @@ async def run_cycle() -> None:
             await detect_emerging_tickers(conn)
         except Exception as e:
             log.warning("  Velocity detection failed (non-critical): %s", e)
+
+        # Claude signal analysis (extract tickers, sentiment, confidence)
+        log.info("Running Claude signal analysis...")
+        try:
+            analyzed = await run_analysis(conn, hours_back=48, max_signals=300)
+            log.info("  Analysis: %d signals processed", analyzed)
+        except Exception as e:
+            log.warning("  Analysis failed (non-critical): %s", e)
+
+        # Build ranked recommendations from analyzed signals
+        log.info("Building recommendations...")
+        try:
+            recs = await build_recommendations(conn, cycle_id)
+            log.info("  Recommendations: %d entries built", recs)
+        except Exception as e:
+            log.warning("  Recommendations failed (non-critical): %s", e)
 
         # Mark cycle complete
         await conn.execute(
