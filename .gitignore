@@ -3,9 +3,13 @@ api/bin/
 *.exe
 
 # Python
-scraper/__pycache__/
-scraper/.venv/
-scraper/*.pyc
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+*.egg-info/
 scraper/playwright-browsers/
 
 # Next.js
