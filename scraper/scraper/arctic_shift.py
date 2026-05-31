@@ -252,22 +252,21 @@ async def search_comments_for_ticker(
     return [s for s in (_comment_to_signal(c) for c in raw) if s]
 
 
-async def search_investment_signals(days_back: int = 1) -> list[RawSignal]:
+async def search_investment_signals(days_back: int = 30) -> list[RawSignal]:
     """
     Search across ALL of Reddit for investment discovery phrases.
-    This catches early signals in communities we don't explicitly track.
+    Note: Arctic Shift is a historical archive - no date filter used since
+    recent data (2025-2026) may not be indexed yet. Gets top-scored results.
     """
     signals: list[RawSignal] = []
-    after = datetime.now(tz=timezone.utc) - timedelta(days=days_back)
 
     async with httpx.AsyncClient() as client:
         for query in DISCOVERY_QUERIES:
             await asyncio.sleep(1)
 
+            # No date filter - let Arctic Shift return its best results
             post_data = await _get(client, f"{BASE}/posts/search", {
-                "q": query, "limit": 25,
-                "after": str(int(after.timestamp())),
-                "sort": "score",
+                "q": query, "limit": 25, "sort": "score",
             })
             if post_data:
                 for p in post_data.get("data", []):
@@ -278,9 +277,7 @@ async def search_investment_signals(days_back: int = 1) -> list[RawSignal]:
             await asyncio.sleep(0.5)
 
             comment_data = await _get(client, f"{BASE}/comments/search", {
-                "q": query, "limit": 50,
-                "after": str(int(after.timestamp())),
-                "sort": "score",
+                "q": query, "limit": 50, "sort": "score",
             })
             if comment_data:
                 for c in comment_data.get("data", []):

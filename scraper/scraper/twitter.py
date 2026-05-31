@@ -111,7 +111,8 @@ async def _get_client():
     """Return an authenticated Twikit client, reusing across the scrape cycle."""
     global _client_cache
     if _client_cache is not None:
-        return _client_cache
+        # "FAILED" sentinel means we already tried and failed this session
+        return None if _client_cache == "FAILED" else _client_cache
 
     try:
         from twikit import Client as TwikitClient  # type: ignore
@@ -142,7 +143,10 @@ async def _get_client():
         _client_cache = client
         return client
     except Exception as e:
-        log.warning("twitter login failed (%s) - run: pip install --upgrade twikit", e)
+        log.warning("twitter: login failed - %s", e)
+        log.warning("twitter: fix with: pip install --upgrade twikit")
+        # Cache None so we don't retry repeatedly this session
+        _client_cache = "FAILED"  # type: ignore
         return None
 
 

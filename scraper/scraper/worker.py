@@ -85,15 +85,9 @@ async def run_cycle() -> None:
         except Exception as e:
             log.warning("  RSS failed (non-critical): %s", e)
 
-        # 2. Reddit JSON API (hot posts + all comments, no auth)
-        log.info("[2/7] Reddit JSON API (hot posts + comments)...")
-        try:
-            reddit_signals = await scrape_all_subreddits()
-            saved = await save_signals(conn, reddit_signals)
-            total_saved += saved
-            log.info("  JSON API: %d signals saved", saved)
-        except Exception as e:
-            log.error("  Reddit JSON failed: %s", e)
+        # 2. Reddit JSON API - blocked by Reddit without OAuth credentials
+        # RSS feeds (step 1) already cover all the same subreddits with full content.
+        log.info("[2/7] Reddit JSON API - skipped (Reddit requires OAuth, RSS covers all subreddits)")
 
         # 3. Arctic Shift (search ALL of Reddit history, no auth)
         log.info("[3/7] Arctic Shift (all-Reddit keyword search)...")
