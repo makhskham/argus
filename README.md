@@ -176,11 +176,18 @@ argus/
 
 ## Open Source Tools Used
 
-- **[Arctic Shift](https://github.com/ArthurHeitmann/arctic_shift)** by Arthur Heitmann - Community-maintained archive of all public Reddit data. Powers the Archive Query page and the hidden gem discovery pipeline, enabling Argus to search the complete Reddit history across every public subreddit.
-- **[PRAW](https://github.com/praw-dev/praw)** - Python Reddit API Wrapper
-- **[Stocktwits API](https://api.stocktwits.com)** - Real-time retail investor sentiment
-- **[Seeking Alpha](https://seekingalpha.com)** - Analyst articles and community analysis
-- **[TradingView Lightweight Charts](https://github.com/tradingview/lightweight-charts)** - Professional financial charting library
+**Data Sources and Archives**
+- **[Arctic Shift](https://github.com/ArthurHeitmann/arctic_shift)** by Arthur Heitmann - Community-maintained archive of all public Reddit data. Powers the Archive Query page and the hidden gem discovery pipeline. Enables searching the complete Reddit history across every public subreddit with no authentication required.
+- **[PullPush](https://pullpush.io)** - Community continuation of Pushshift. Provides deep historical Reddit data going back to 2005, used for niche discovery queries and ticker history lookups.
+- **[Twikit](https://github.com/d60/twikit)** - Python library for accessing Twitter/X without an official API key. Optional component that enables fintwit (financial Twitter) signal collection.
+- **[Stocktwits](https://stocktwits.com)** - Real-time retail investor sentiment via their public API endpoints.
+- **[Seeking Alpha](https://seekingalpha.com)** - Analyst articles accessed via their frontend API.
+
+**Libraries**
+- **[TradingView Lightweight Charts](https://github.com/tradingview/lightweight-charts)** - Professional financial charting library, the same engine used by TradingView.com
+- **[PRAW](https://github.com/praw-dev/praw)** - Python Reddit API Wrapper (used when official credentials are available)
+- **[httpx](https://github.com/encode/httpx)** - Async HTTP client for Python
+- **[Pydantic](https://github.com/pydantic/pydantic)** - Data validation for scraped content
 
 ## License
 

@@ -3,6 +3,7 @@ import { useState, useRef } from "react"
 
 type ResultType = "posts" | "comments"
 type SortType = "score" | "created_utc" | "num_comments"
+type ArchiveSource = "arctic-shift" | "pullpush"
 
 interface ArcticResult {
   id: string
@@ -108,6 +109,7 @@ export default function QueryPage() {
   const [sort, setSort] = useState<SortType>("score")
   const [limit, setLimit] = useState("50")
   const [minScore, setMinScore] = useState("0")
+  const [source, setSource] = useState<ArchiveSource>("arctic-shift")
   const [results, setResults] = useState<ArcticResult[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
@@ -136,7 +138,8 @@ export default function QueryPage() {
       if (after) params.set("after", new Date(after).toISOString().slice(0, 19))
       if (before) params.set("before", new Date(before).toISOString().slice(0, 19))
 
-      const res = await fetch(`/api/arctic-shift?${params}`)
+      const endpoint = source === "pullpush" ? "/api/pullpush" : "/api/arctic-shift"
+      const res = await fetch(`${endpoint}?${params}`)
       const data = await res.json()
 
       if (!res.ok) {
@@ -176,6 +179,32 @@ export default function QueryPage() {
               Arctic Shift
             </a>{" "}
             by Arthur Heitmann. Searches the complete Reddit archive.
+          </div>
+        </div>
+
+        {/* Archive source */}
+        <div>
+          <div className="text-[9px] text-[#2d2d2d] tracking-[0.12em] uppercase mb-2">
+            Archive Source
+          </div>
+          <div className="space-y-1">
+            {([
+              { value: "arctic-shift", label: "Arctic Shift", desc: "Recent data, full-text search" },
+              { value: "pullpush", label: "PullPush", desc: "Deep history back to 2005" },
+            ] as { value: ArchiveSource; label: string; desc: string }[]).map((s) => (
+              <button
+                key={s.value}
+                onClick={() => setSource(s.value)}
+                className={`w-full text-left px-2.5 py-2 rounded border text-xs transition-colors ${
+                  source === s.value
+                    ? "bg-[#111] border-[#2a2a2a] text-white"
+                    : "border-[#161616] text-[#4b5563] hover:text-[#94a3b8]"
+                }`}
+              >
+                <div className="font-semibold">{s.label}</div>
+                <div className="text-[9px] opacity-60 mt-0.5">{s.desc}</div>
+              </button>
+            ))}
           </div>
         </div>
 
