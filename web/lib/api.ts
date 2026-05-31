@@ -17,6 +17,11 @@ export interface Recommendation {
   price_target_bull: number | null
   price_target_bear: number | null
   halal_compliant: boolean | null
+  momentum_score: number | null
+  mention_velocity: number | null
+  stock_price: number | null
+  market_cap_tier: string | null
+  is_emerging: boolean | null
 }
 
 export interface Signal {
@@ -75,5 +80,29 @@ export async function fetchRecommendationByTicker(ticker: string) {
     next: { revalidate: 300 },
   })
   if (!res.ok) return null
+  return res.json()
+}
+
+export interface EmergingTicker {
+  ticker: string
+  first_seen_at: string
+  initial_confidence: number
+  source_subreddit: string | null
+  first_mention_body: string | null
+  graduation_score: number
+  halal_compliant: boolean | null
+  stock_price: number | null
+  market_cap_tier: string | null
+  momentum_score: number | null
+  confidence: number | null
+  bull_pct: number | null
+  signal_count: number | null
+}
+
+export async function fetchEmergingTickers(halal = false): Promise<EmergingTicker[]> {
+  const url = new URL(`${API}/api/v1/recommendations/emerging`)
+  url.searchParams.set("halal", String(halal))
+  const res = await fetch(url.toString(), { next: { revalidate: 120 } })
+  if (!res.ok) return []
   return res.json()
 }

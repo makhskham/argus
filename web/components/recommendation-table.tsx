@@ -32,7 +32,7 @@ export function RecommendationTable({ direction, halal, limit = 30 }: Props) {
         style={{ gridTemplateColumns: "28px 1fr 110px 110px 90px 70px" }}
       >
         <div>#</div><div>Ticker</div><div>Confidence</div>
-        <div>Sentiment</div><div className="text-right">Sources</div><div className="text-right">7d Δ</div>
+        <div>Sentiment</div><div className="text-right">Sources</div><div className="text-right">Momentum</div>
       </div>
       {isLoading && <div className="px-4 py-8 text-center text-[#2d2d2d] text-xs">Loading...</div>}
       {error && <div className="px-4 py-8 text-center text-[#4b5563] text-xs">API not reachable — start the Go backend</div>}

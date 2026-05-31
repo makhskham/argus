@@ -19,13 +19,14 @@ const RISKS: { value: Risk; label: string; color: string }[] = [
 
 export default function ProfilePage() {
   const [budget, setBudget] = useState("25000")
+  const [perStockBudget, setPerStockBudget] = useState("500")
   const [goal, setGoal] = useState<Goal>("retirement")
   const [risk, setRisk] = useState<Risk>("moderate")
   const [halal, setHalal] = useState(false)
   const [saved, setSaved] = useState(false)
 
   function handleSave() {
-    localStorage.setItem("argus_profile", JSON.stringify({ budget, goal, risk, halal }))
+    localStorage.setItem("argus_profile", JSON.stringify({ budget, per_stock_budget: parseFloat(perStockBudget) || null, goal, risk, halal }))
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -43,6 +44,27 @@ export default function ProfilePage() {
           <input type="number" value={budget} onChange={(e) => setBudget(e.target.value)}
             className="flex-1 bg-[#0d0d0d] border border-[#1c1c1c] rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-[#2a2a2a]" min="0" />
         </div>
+      </div>
+      {/* Per-stock budget */}
+      <div className="bg-[#080808] border border-[#161616] rounded-lg p-4 space-y-3">
+        <div className="text-[10px] text-[#2d2d2d] tracking-[0.12em] uppercase">
+          Max Per Single Stock
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[#4b5563] text-sm">$</span>
+          <input
+            type="number"
+            value={perStockBudget}
+            onChange={(e) => setPerStockBudget(e.target.value)}
+            placeholder="e.g. 500"
+            className="flex-1 bg-[#0d0d0d] border border-[#1c1c1c] rounded px-3 py-2 text-sm text-white font-mono focus:outline-none focus:border-[#2a2a2a]"
+            min="0"
+          />
+        </div>
+        <p className="text-[10px] text-[#374151]">
+          Argus will only recommend stocks at or below this price per share.
+          Lower values surface niche and micro-cap opportunities.
+        </p>
       </div>
       <div className="bg-[#080808] border border-[#161616] rounded-lg p-4 space-y-3">
         <div className="text-[10px] text-[#2d2d2d] tracking-[0.12em] uppercase">Investing Goal</div>

@@ -3,6 +3,7 @@ import { parseAsBoolean, parseAsString, useQueryStates } from "nuqs"
 import { StatCard } from "@/components/ui/stat-card"
 import { RecommendationTable } from "@/components/recommendation-table"
 import { BreakingSignalsPanel } from "@/components/breaking-signals-panel"
+import { HiddenGemsPanel } from "@/components/hidden-gems-panel"
 
 export function DashboardClient() {
   const [params, setParams] = useQueryStates({
@@ -53,7 +54,10 @@ export function DashboardClient() {
               <RecommendationTable direction="buy" halal={params.halal} />
               <RecommendationTable direction="avoid" halal={params.halal} />
             </div>
-            <div><BreakingSignalsPanel /></div>
+            <div className="space-y-4">
+              <BreakingSignalsPanel />
+              <HiddenGemsPanel halal={params.halal} />
+            </div>
           </div>
         </div>
       </div>
