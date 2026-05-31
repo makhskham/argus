@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS price_history;
+DROP TABLE IF EXISTS user_profiles;
+DROP TABLE IF EXISTS watchlist;
+DROP TABLE IF EXISTS halal_compliance;
+DROP TABLE IF EXISTS scrape_cycles;
+DROP TABLE IF EXISTS recommendations;
+DROP TABLE IF EXISTS ticker_sentiment;
+DROP TABLE IF EXISTS signal_embeddings;
+DROP TABLE IF EXISTS signal_analyses;
+DROP TABLE IF EXISTS signals;
+DROP TABLE IF EXISTS reddit_users;
+DROP EXTENSION IF EXISTS timescaledb;
+DROP EXTENSION IF EXISTS vector;
