@@ -41,8 +41,9 @@ SUBREDDITS = [
     "ValueInvesting", "SecurityAnalysis", "wallstreetbets", "Options",
     "Daytrading", "CanadianInvestor", "algotrading", "thetagang",
     # Small cap and niche — the hidden gem sources
+    # (r/undervalued is private, r/OTCstocks doesn't exist - replaced below)
     "pennystocks", "Superstonk", "smallcap", "RobinhoodPennyStocks",
-    "undervalued", "MicroCapStocks", "OTCstocks", "investing_discussion",
+    "ValueInvestingAndMore", "MicroCapStocks", "OTC_Stocks", "investing_discussion",
     "weedstocks", "EVstocks", "stocks_advice", "stockmarketnews",
 ]
 

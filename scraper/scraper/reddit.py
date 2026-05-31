@@ -27,7 +27,7 @@ SUBREDDITS = [
     "Daytrading", "CanadianInvestor", "algotrading", "thetagang",
     # Small cap / niche / emerging — critical for hidden gem detection
     "pennystocks", "Superstonk", "smallcap", "RobinhoodPennyStocks",
-    "undervalued", "MicroCapStocks", "OTCstocks", "investing_discussion",
+    "ValueInvestingAndMore", "MicroCapStocks", "OTC_Stocks", "investing_discussion",
     "weedstocks", "EVstocks", "stocks_advice", "stockmarketnews",
 ]
 
