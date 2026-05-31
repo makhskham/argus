@@ -143,7 +143,10 @@ argus/
 │   └── Dockerfile
 ├── scraper/                    Python scraping workers
 │   └── scraper/
-│       ├── reddit.py           PRAW-based scraper (25 subreddits)
+│       ├── reddit.py           Reddit public JSON API (25 subreddits, no auth)
+│       ├── arctic_shift.py     Arctic Shift integration (full Reddit archive search)
+│       ├── stocktwits.py       Stocktwits real-time sentiment
+│       ├── seeking_alpha.py    Seeking Alpha analyst articles
 │       ├── velocity.py         Mention velocity and emerging ticker detection
 │       ├── worker.py           Main scrape cycle orchestration
 │       ├── models.py           Pydantic data models
@@ -153,11 +156,13 @@ argus/
 │   │   ├── (app)/              Authenticated app pages
 │   │   │   ├── dashboard/      Command Center
 │   │   │   ├── intelligence/   Signal feed with filters
+│   │   │   ├── query/          Reddit archive manual query (Arctic Shift)
 │   │   │   ├── chat/           AI chat (Claude Opus 4.8)
 │   │   │   ├── stocks/[ticker] Stock deep dive
 │   │   │   ├── profile/        Budget, goals, halal filter
 │   │   │   └── ...             Other pages
-│   │   └── api/chat/           Streaming chat API route
+│   │   ├── api/chat/           Streaming chat API route
+│   │   └── api/arctic-shift/   Proxy route for Arctic Shift queries
 │   ├── components/
 │   │   ├── ui/                 Design system components
 │   │   ├── recommendation-table.tsx
@@ -168,6 +173,14 @@ argus/
 ├── Makefile
 └── .github/workflows/ci.yml
 ```
+
+## Open Source Tools Used
+
+- **[Arctic Shift](https://github.com/ArthurHeitmann/arctic_shift)** by Arthur Heitmann - Community-maintained archive of all public Reddit data. Powers the Archive Query page and the hidden gem discovery pipeline, enabling Argus to search the complete Reddit history across every public subreddit.
+- **[PRAW](https://github.com/praw-dev/praw)** - Python Reddit API Wrapper
+- **[Stocktwits API](https://api.stocktwits.com)** - Real-time retail investor sentiment
+- **[Seeking Alpha](https://seekingalpha.com)** - Analyst articles and community analysis
+- **[TradingView Lightweight Charts](https://github.com/tradingview/lightweight-charts)** - Professional financial charting library
 
 ## License
 

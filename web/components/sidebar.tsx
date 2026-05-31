@@ -26,6 +26,7 @@ const NAV = [
     group: "Tools",
     items: [
       { label: "AI Chat", href: "/chat", icon: "◎" },
+      { label: "Archive Query", href: "/query", icon: "⌕" },
       { label: "Data Sources", href: "/sources", icon: "◈" },
     ],
   },

@@ -1,15 +1,22 @@
 """
-Arctic Shift API scraper.
+Arctic Shift integration.
 
-Arctic Shift is a community-maintained archive of all public Reddit data.
-It lets us search across ALL of Reddit by ticker symbol, finding mentions
-in obscure subreddits we'd never think to monitor manually.
+Arctic Shift (https://github.com/ArthurHeitmann/arctic_shift) is a
+community-maintained archive of all public Reddit data, built by
+Arthur Heitmann. It provides a free API for searching the complete
+Reddit history — every post and comment ever made on public subreddits.
 
+This is the core of Argus's hidden gem detection. A company discussed
+in r/ChemicalEngineering in January might not hit r/wallstreetbets until
+March. Arctic Shift lets us find it in January.
+
+API base: https://arctic-shift.photon-reddit.com/api
 API docs: https://arctic-shift.photon-reddit.com/api-docs
-No authentication required. Rate limit: ~60 requests/minute.
+GitHub:   https://github.com/ArthurHeitmann/arctic_shift
 
-This is the key to hidden gem detection — a stock being discussed in
-r/ChemicalEngineering or r/biotech before r/wallstreetbets ever hears of it.
+No authentication required. Rate limit: ~60 requests/minute.
+Self-hosting is possible with the full Reddit data dump for even higher
+throughput — see the Arctic Shift README for setup instructions.
 """
 import asyncio
 import logging
@@ -23,21 +30,20 @@ from .models import RawSignal
 log = logging.getLogger(__name__)
 
 BASE = "https://arctic-shift.photon-reddit.com/api"
-HEADERS = {"User-Agent": "argus-personal/0.1"}
+HEADERS = {
+    "User-Agent": "argus-personal/0.1 (https://github.com/makhskham/argus)",
+}
 
-# Investment-related search terms we'll use to find signals
-# The scraper searches for these across ALL of Reddit
-SEARCH_QUERIES = [
-    # Direct investment signals
-    "due diligence", "DD", "bull thesis", "bear thesis",
-    "price target", "undervalued", "hidden gem", "small cap",
-    "going to moon", "short squeeze", "catalyst", "earnings beat",
-    # Event-driven signals
-    "acquisition", "merger", "partnership deal", "FDA approval",
-    "contract win", "revenue growth", "beat estimates",
-    # Niche discovery signals
-    "no one is talking about", "overlooked stock", "under the radar",
-    "micro cap", "penny stock gem", "before it blows up",
+# Discovery phrases — searched across ALL of Reddit to surface niche signals
+DISCOVERY_QUERIES = [
+    "no one is talking about stock",
+    "hidden gem small cap",
+    "under the radar ticker",
+    "before it blows up stock",
+    "DD due diligence undervalued",
+    "catalyst upcoming earnings",
+    "short squeeze potential",
+    "micro cap discovery",
 ]
 
 
@@ -47,10 +53,10 @@ async def _get(client: httpx.AsyncClient, url: str, params: dict) -> dict | None
         r.raise_for_status()
         return r.json()
     except httpx.HTTPStatusError as e:
-        log.warning("arctic shift %s status %d", url, e.response.status_code)
+        log.warning("arctic shift HTTP %d: %s", e.response.status_code, url)
         return None
     except Exception as e:
-        log.warning("arctic shift %s error: %s", url, e)
+        log.warning("arctic shift error %s: %s", url, e)
         return None
 
 
@@ -78,8 +84,7 @@ def _post_to_signal(post: dict) -> RawSignal | None:
             upvote_ratio=float(post.get("upvote_ratio", 0)),
             posted_at=posted_at,
         )
-    except Exception as e:
-        log.debug("post parse error: %s", e)
+    except Exception:
         return None
 
 
@@ -107,36 +112,132 @@ def _comment_to_signal(comment: dict) -> RawSignal | None:
             upvote_ratio=0.0,
             posted_at=posted_at,
         )
-    except Exception as e:
-        log.debug("comment parse error: %s", e)
+    except Exception:
         return None
 
+
+# ──────────────────────────────────────────────────────────────────
+# Core query functions (used by both the scraper and the manual UI)
+# ──────────────────────────────────────────────────────────────────
+
+async def query_posts(
+    q: str = "",
+    subreddit: str = "",
+    author: str = "",
+    after: Optional[datetime] = None,
+    before: Optional[datetime] = None,
+    sort: str = "score",
+    limit: int = 100,
+    min_score: int = 0,
+) -> list[dict]:
+    """
+    Raw query against Arctic Shift post archive.
+    Returns raw dicts (not RawSignal) so the UI can display full metadata.
+    """
+    params: dict = {"limit": min(limit, 100), "sort": sort}
+    if q:
+        params["q"] = q
+    if subreddit:
+        params["subreddit"] = subreddit
+    if author:
+        params["author"] = author
+    if after:
+        params["after"] = after.strftime("%Y-%m-%dT%H:%M:%S")
+    if before:
+        params["before"] = before.strftime("%Y-%m-%dT%H:%M:%S")
+
+    async with httpx.AsyncClient() as client:
+        data = await _get(client, f"{BASE}/posts/search", params)
+        if not data:
+            return []
+        results = data.get("data", [])
+        if min_score:
+            results = [p for p in results if int(p.get("score", 0)) >= min_score]
+        return results
+
+
+async def query_comments(
+    q: str = "",
+    subreddit: str = "",
+    author: str = "",
+    after: Optional[datetime] = None,
+    before: Optional[datetime] = None,
+    sort: str = "score",
+    limit: int = 100,
+    min_score: int = 0,
+) -> list[dict]:
+    """
+    Raw query against Arctic Shift comment archive.
+    Returns raw dicts so the UI can display full metadata.
+    """
+    params: dict = {"limit": min(limit, 100), "sort": sort}
+    if q:
+        params["q"] = q
+    if subreddit:
+        params["subreddit"] = subreddit
+    if author:
+        params["author"] = author
+    if after:
+        params["after"] = after.strftime("%Y-%m-%dT%H:%M:%S")
+    if before:
+        params["before"] = before.strftime("%Y-%m-%dT%H:%M:%S")
+
+    async with httpx.AsyncClient() as client:
+        data = await _get(client, f"{BASE}/comments/search", params)
+        if not data:
+            return []
+        results = data.get("data", [])
+        if min_score:
+            results = [c for c in results if int(c.get("score", 0)) >= min_score]
+        return results
+
+
+async def get_post_comments_by_id(post_id: str, limit: int = 500) -> list[dict]:
+    """Get all comments for a post by its Reddit ID."""
+    async with httpx.AsyncClient() as client:
+        data = await _get(client, f"{BASE}/comments", {
+            "link_id": f"t3_{post_id}",
+            "limit": limit,
+            "sort": "score",
+        })
+        return data.get("data", []) if data else []
+
+
+async def get_user_posts(username: str, limit: int = 50) -> list[dict]:
+    """Get posts by a specific Reddit user (useful for tracking Trusted Voices)."""
+    async with httpx.AsyncClient() as client:
+        data = await _get(client, f"{BASE}/posts/search", {
+            "author": username,
+            "limit": limit,
+            "sort": "score",
+        })
+        return data.get("data", []) if data else []
+
+
+async def get_user_comments(username: str, limit: int = 100) -> list[dict]:
+    """Get comments by a specific Reddit user."""
+    async with httpx.AsyncClient() as client:
+        data = await _get(client, f"{BASE}/comments/search", {
+            "author": username,
+            "limit": limit,
+            "sort": "score",
+        })
+        return data.get("data", []) if data else []
+
+
+# ──────────────────────────────────────────────────────────────────
+# Signal-returning wrappers (for the scrape pipeline)
+# ──────────────────────────────────────────────────────────────────
 
 async def search_posts_for_ticker(
     ticker: str,
     days_back: int = 7,
     limit: int = 100,
 ) -> list[RawSignal]:
-    """Search ALL of Reddit for a specific ticker symbol."""
-    signals: list[RawSignal] = []
+    """Search ALL of Reddit for a specific ticker symbol — posts."""
     after = datetime.now(tz=timezone.utc) - timedelta(days=days_back)
-
-    async with httpx.AsyncClient() as client:
-        data = await _get(client, f"{BASE}/posts/search", {
-            "q": f"${ticker} OR \"{ticker}\"",
-            "limit": limit,
-            "after": after.isoformat(),
-            "sort": "score",
-        })
-        if not data:
-            return signals
-
-        for post in data.get("data", []):
-            sig = _post_to_signal(post)
-            if sig:
-                signals.append(sig)
-
-    return signals
+    raw = await query_posts(q=f"${ticker} OR \"{ticker}\"", after=after, limit=limit)
+    return [s for s in (_post_to_signal(p) for p in raw) if s]
 
 
 async def search_comments_for_ticker(
@@ -145,94 +246,46 @@ async def search_comments_for_ticker(
     limit: int = 200,
 ) -> list[RawSignal]:
     """Search ALL Reddit comments for a specific ticker symbol."""
-    signals: list[RawSignal] = []
     after = datetime.now(tz=timezone.utc) - timedelta(days=days_back)
-
-    async with httpx.AsyncClient() as client:
-        data = await _get(client, f"{BASE}/comments/search", {
-            "q": f"${ticker} OR \"{ticker}\"",
-            "limit": limit,
-            "after": after.isoformat(),
-            "sort": "score",
-        })
-        if not data:
-            return signals
-
-        for comment in data.get("data", []):
-            sig = _comment_to_signal(comment)
-            if sig:
-                signals.append(sig)
-
-    return signals
+    raw = await query_comments(q=f"${ticker} OR \"{ticker}\"", after=after, limit=limit)
+    return [s for s in (_comment_to_signal(c) for c in raw) if s]
 
 
 async def search_investment_signals(days_back: int = 1) -> list[RawSignal]:
     """
-    Search across ALL of Reddit for investment-related discussions.
-    This catches signals from subreddits we don't explicitly track.
-    Focuses on discovery phrases that indicate someone found something early.
+    Search across ALL of Reddit for investment discovery phrases.
+    This catches early signals in communities we don't explicitly track.
     """
     signals: list[RawSignal] = []
     after = datetime.now(tz=timezone.utc) - timedelta(days=days_back)
 
     async with httpx.AsyncClient() as client:
-        # Run a few high-value search queries
-        priority_queries = [
-            "no one is talking about stock",
-            "hidden gem small cap",
-            "before it blows up ticker",
-            "under the radar stock",
-            "DD due diligence undervalued",
-        ]
+        for query in DISCOVERY_QUERIES:
+            await asyncio.sleep(1)
 
-        for query in priority_queries:
-            await asyncio.sleep(1)  # respect rate limit
-
-            # Search posts
             post_data = await _get(client, f"{BASE}/posts/search", {
-                "q": query,
-                "limit": 25,
-                "after": after.isoformat(),
+                "q": query, "limit": 25,
+                "after": after.strftime("%Y-%m-%dT%H:%M:%S"),
                 "sort": "score",
             })
             if post_data:
-                for post in post_data.get("data", []):
-                    sig = _post_to_signal(post)
-                    if sig:
-                        signals.append(sig)
+                for p in post_data.get("data", []):
+                    s = _post_to_signal(p)
+                    if s:
+                        signals.append(s)
 
             await asyncio.sleep(0.5)
 
-            # Search comments
             comment_data = await _get(client, f"{BASE}/comments/search", {
-                "q": query,
-                "limit": 50,
-                "after": after.isoformat(),
+                "q": query, "limit": 50,
+                "after": after.strftime("%Y-%m-%dT%H:%M:%S"),
                 "sort": "score",
             })
             if comment_data:
-                for comment in comment_data.get("data", []):
-                    sig = _comment_to_signal(comment)
-                    if sig:
-                        signals.append(sig)
+                for c in comment_data.get("data", []):
+                    s = _comment_to_signal(c)
+                    if s:
+                        signals.append(s)
 
-    log.info("arctic shift discovery: found %d signals across all Reddit", len(signals))
-    return signals
-
-
-async def get_post_comments(post_id: str, subreddit: str) -> list[RawSignal]:
-    """Get all comments for a specific post."""
-    signals: list[RawSignal] = []
-    async with httpx.AsyncClient() as client:
-        data = await _get(client, f"{BASE}/comments", {
-            "link_id": f"t3_{post_id}",
-            "limit": 500,
-            "sort": "score",
-        })
-        if not data:
-            return signals
-        for comment in data.get("data", []):
-            sig = _comment_to_signal(comment)
-            if sig:
-                signals.append(sig)
+    log.info("arctic shift discovery: %d signals across all Reddit", len(signals))
     return signals
