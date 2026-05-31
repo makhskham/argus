@@ -11,6 +11,7 @@ type Config struct {
 	VoyageKey    string
 	PolygonKey   string
 	ZoyaKey      string
+	ZoyaSandbox  bool
 	Port         string
 }
 
@@ -22,6 +23,7 @@ func Load() Config {
 		VoyageKey:    mustEnv("VOYAGE_API_KEY"),
 		PolygonKey:   mustEnv("POLYGON_API_KEY"),
 		ZoyaKey:      getEnv("ZOYA_API_KEY", ""),
+		ZoyaSandbox:  getEnv("ZOYA_SANDBOX", "") == "true",
 		Port:         getEnv("PORT", "8080"),
 	}
 }

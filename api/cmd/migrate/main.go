@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
@@ -17,7 +18,13 @@ func main() {
 		log.Fatal("DATABASE_URL required")
 	}
 
-	m, err := migrate.New("file://migrations", dbURL)
+	// golang-migrate pgx/v5 driver requires pgx5:// scheme
+	migrateURL := strings.NewReplacer(
+		"postgresql://", "pgx5://",
+		"postgres://", "pgx5://",
+	).Replace(dbURL)
+
+	m, err := migrate.New("file://migrations", migrateURL)
 	if err != nil {
 		log.Fatalf("migrate init: %v", err)
 	}
