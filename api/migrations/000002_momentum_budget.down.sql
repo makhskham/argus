@@ -1,0 +1,12 @@
+DROP TABLE IF EXISTS emerging_tickers;
+DROP TABLE IF EXISTS ticker_velocity;
+ALTER TABLE user_profiles DROP COLUMN IF EXISTS preferred_tiers;
+ALTER TABLE user_profiles DROP COLUMN IF EXISTS per_stock_budget;
+DROP INDEX IF EXISTS idx_recommendations_momentum;
+DROP INDEX IF EXISTS idx_recommendations_emerging;
+ALTER TABLE recommendations DROP COLUMN IF EXISTS is_emerging;
+ALTER TABLE recommendations DROP COLUMN IF EXISTS market_cap_tier;
+ALTER TABLE recommendations DROP COLUMN IF EXISTS stock_price;
+ALTER TABLE recommendations DROP COLUMN IF EXISTS first_mentioned_at;
+ALTER TABLE recommendations DROP COLUMN IF EXISTS mention_velocity;
+ALTER TABLE recommendations DROP COLUMN IF EXISTS momentum_score;
