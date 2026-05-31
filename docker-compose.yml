@@ -1,0 +1,40 @@
+version: "3.9"
+services:
+  db:
+    image: timescale/timescaledb-ha:pg16-latest
+    environment:
+      POSTGRES_USER: argus
+      POSTGRES_PASSWORD: argus
+      POSTGRES_DB: argus
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build: ./api
+    ports:
+      - "8080:8080"
+    environment:
+      DATABASE_URL: postgres://argus:argus@db:5432/argus?sslmode=disable
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - db
+      - redis
+
+  scraper:
+    build: ./scraper
+    environment:
+      DATABASE_URL: postgresql+asyncpg://argus:argus@db:5432/argus
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      - db
+      - redis
+
+volumes:
+  pgdata:

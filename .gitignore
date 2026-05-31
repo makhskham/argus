@@ -1,0 +1,28 @@
+# Go
+api/bin/
+*.exe
+
+# Python
+scraper/__pycache__/
+scraper/.venv/
+scraper/*.pyc
+scraper/playwright-browsers/
+
+# Next.js
+web/.next/
+web/node_modules/
+web/.env.local
+
+# Env
+.env
+.env.local
+local.yaml
+*.local.yaml
+
+# Superpowers
+.superpowers/
+
+# IDE
+.idea/
+.vscode/
+*.swp
