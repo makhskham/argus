@@ -9,9 +9,9 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 	"github.com/makhskham/argus/api/internal/config"
 	"github.com/makhskham/argus/api/internal/handler"
-	"github.com/rs/cors"
 )
 
 func main() {
@@ -26,6 +26,7 @@ func main() {
 
 	recH := handler.NewRecommendations(pool)
 	sigH := handler.NewSignals(pool)
+	usrH := handler.NewUsers(pool)
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -36,8 +37,11 @@ func main() {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Get("/recommendations", recH.List)
+		r.Get("/recommendations/emerging", recH.Emerging)
 		r.Get("/recommendations/{ticker}", recH.ByTicker)
 		r.Get("/signals", sigH.List)
+		r.Get("/users/profile", usrH.GetProfile)
+		r.Post("/users/profile", usrH.UpsertProfile)
 	})
 
 	log.Printf("api listening on :%s", cfg.Port)
