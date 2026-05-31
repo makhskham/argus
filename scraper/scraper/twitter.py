@@ -131,6 +131,7 @@ async def _get_client():
             log.info("twitter: cookies expired, logging in fresh")
 
     try:
+        # auth_info_1 = username, auth_info_2 = email (for 2-step verification)
         await client.login(
             auth_info_1=TWITTER_USERNAME,
             auth_info_2=TWITTER_EMAIL,
@@ -141,7 +142,7 @@ async def _get_client():
         _client_cache = client
         return client
     except Exception as e:
-        log.error("twitter login failed: %s", e)
+        log.warning("twitter login failed (%s) - run: pip install --upgrade twikit", e)
         return None
 
 

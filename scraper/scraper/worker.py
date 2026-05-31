@@ -96,7 +96,7 @@ async def run_cycle() -> None:
         # 3. Arctic Shift (search ALL of Reddit history, no auth)
         log.info("[3/7] Arctic Shift (all-Reddit keyword search)...")
         try:
-            arctic_signals = await search_investment_signals(days_back=1)
+            arctic_signals = await search_investment_signals(days_back=30)
             saved = await save_signals(conn, arctic_signals)
             total_saved += saved
             log.info("  Arctic Shift: %d signals saved", saved)

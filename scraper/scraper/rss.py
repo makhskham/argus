@@ -40,11 +40,13 @@ SUBREDDITS = [
     "investing", "stocks", "StockMarket", "Bogleheads", "dividends",
     "ValueInvesting", "SecurityAnalysis", "wallstreetbets", "Options",
     "Daytrading", "CanadianInvestor", "algotrading", "thetagang",
-    # Small cap and niche — the hidden gem sources
-    # (r/undervalued is private, r/OTCstocks doesn't exist - replaced below)
+    # Small cap and niche — hidden gem sources
     "pennystocks", "Superstonk", "smallcap", "RobinhoodPennyStocks",
     "ValueInvestingAndMore", "MicroCapStocks", "OTC_Stocks", "investing_discussion",
     "weedstocks", "EVstocks", "stocks_advice", "stockmarketnews",
+    # Halal / Shariah compliant investing communities
+    "IslamicFinanceUSA", "MuslimCorner", "MuslimInvestors", "HalalInvestor",
+    "InvestingForBeginners",
 ]
 
 

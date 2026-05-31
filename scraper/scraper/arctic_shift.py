@@ -142,9 +142,10 @@ async def query_posts(
     if author:
         params["author"] = author
     if after:
-        params["after"] = after.strftime("%Y-%m-%dT%H:%M:%S")
+        # Arctic Shift expects Unix timestamp integer
+        params["after"] = str(int(after.timestamp()))
     if before:
-        params["before"] = before.strftime("%Y-%m-%dT%H:%M:%S")
+        params["before"] = str(int(before.timestamp()))
 
     async with httpx.AsyncClient() as client:
         data = await _get(client, f"{BASE}/posts/search", params)
@@ -178,9 +179,9 @@ async def query_comments(
     if author:
         params["author"] = author
     if after:
-        params["after"] = after.strftime("%Y-%m-%dT%H:%M:%S")
+        params["after"] = str(int(after.timestamp()))
     if before:
-        params["before"] = before.strftime("%Y-%m-%dT%H:%M:%S")
+        params["before"] = str(int(before.timestamp()))
 
     async with httpx.AsyncClient() as client:
         data = await _get(client, f"{BASE}/comments/search", params)
@@ -265,7 +266,7 @@ async def search_investment_signals(days_back: int = 1) -> list[RawSignal]:
 
             post_data = await _get(client, f"{BASE}/posts/search", {
                 "q": query, "limit": 25,
-                "after": after.strftime("%Y-%m-%dT%H:%M:%S"),
+                "after": str(int(after.timestamp())),
                 "sort": "score",
             })
             if post_data:
@@ -278,7 +279,7 @@ async def search_investment_signals(days_back: int = 1) -> list[RawSignal]:
 
             comment_data = await _get(client, f"{BASE}/comments/search", {
                 "q": query, "limit": 50,
-                "after": after.strftime("%Y-%m-%dT%H:%M:%S"),
+                "after": str(int(after.timestamp())),
                 "sort": "score",
             })
             if comment_data:

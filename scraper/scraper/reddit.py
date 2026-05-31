@@ -25,10 +25,13 @@ SUBREDDITS = [
     "investing", "stocks", "StockMarket", "Bogleheads", "dividends",
     "ValueInvesting", "SecurityAnalysis", "wallstreetbets", "Options",
     "Daytrading", "CanadianInvestor", "algotrading", "thetagang",
-    # Small cap / niche / emerging — critical for hidden gem detection
+    # Small cap / niche / emerging — hidden gem detection
     "pennystocks", "Superstonk", "smallcap", "RobinhoodPennyStocks",
     "ValueInvestingAndMore", "MicroCapStocks", "OTC_Stocks", "investing_discussion",
     "weedstocks", "EVstocks", "stocks_advice", "stockmarketnews",
+    # Halal / Shariah compliant investing
+    "IslamicFinanceUSA", "MuslimCorner", "MuslimInvestors", "HalalInvestor",
+    "InvestingForBeginners",
 ]
 
 # Ticker pattern: 1-5 uppercase letters, optionally preceded by $ sign
@@ -153,7 +156,8 @@ async def scrape_subreddit_public(subreddit_name: str, limit: int = 50) -> list[
 
     async with httpx.AsyncClient(timeout=30) as client:
         # Fetch hot posts
-        url = f"https://www.reddit.com/r/{subreddit_name}/hot.json?limit={limit}"
+        # old.reddit.com is less aggressive with blocking than www.reddit.com
+        url = f"https://old.reddit.com/r/{subreddit_name}/hot.json?limit={limit}"
         data = await _fetch_json(client, url)
         if not data:
             return signals
@@ -168,7 +172,7 @@ async def scrape_subreddit_public(subreddit_name: str, limit: int = 50) -> list[
             post_id = post.get("data", {}).get("id")
             if post_id:
                 comment_url = (
-                    f"https://www.reddit.com/r/{subreddit_name}"
+                    f"https://old.reddit.com/r/{subreddit_name}"
                     f"/comments/{post_id}.json?limit=50&depth=3"
                 )
                 cdata = await _fetch_json(client, comment_url)
@@ -178,7 +182,6 @@ async def scrape_subreddit_public(subreddit_name: str, limit: int = 50) -> list[
                         _extract_comments(comment_listing, subreddit_name, post_id)
                     )
 
-            # Small delay to respect rate limits (1 req/sec for public API)
             await asyncio.sleep(0.5)
 
     log.info("r/%s (public): scraped %d signals", subreddit_name, len(signals))
