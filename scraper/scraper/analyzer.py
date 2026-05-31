@@ -241,35 +241,106 @@ async def _call_ai_api(
     return []  # Both AI APIs failed, caller falls back to regex
 
 
+async def check_groq_credits(client: httpx.AsyncClient) -> bool:
+    """Quick check if Groq key is valid and has quota."""
+    if not GROQ_KEY:
+        return False
+    try:
+        r = await client.post(
+            GROQ_API,
+            headers={"Authorization": f"Bearer {GROQ_KEY}", "Content-Type": "application/json"},
+            json={"model": GROQ_MODEL, "messages": [{"role": "user", "content": "hi"}], "max_tokens": 1},
+            timeout=10,
+        )
+        return r.status_code == 200
+    except Exception:
+        return False
+
+
 async def run_analysis(
     conn: asyncpg.Connection,
-    hours_back: int = 48,
-    max_signals: int = 500,
+    hours_back: int = 72,
+    max_signals: int = 300,
 ) -> int:
-    """Analyze unprocessed signals. Auto-selects best available method."""
-    since = datetime.now(tz=timezone.utc) - timedelta(hours=hours_back)
+    """
+    Analyze ONLY unprocessed signals (never re-analyzes the same signal twice).
+
+    Priority order for time windows (saves tokens):
+    - First: signals from last 3 days (freshest, most actionable)
+    - Then: up to last 7 days if budget allows
+    - Then: up to last 14 days if budget still allows
+
+    Signals already in signal_analyses are skipped entirely.
+    The most upvoted signals are processed first (highest signal quality per token).
+    """
+    now = datetime.now(tz=timezone.utc)
+
+    # Priority time windows - process freshest first, expand if tokens allow
+    time_windows = [
+        timedelta(days=3),   # Priority 1: last 3 days
+        timedelta(days=7),   # Priority 2: last week
+        timedelta(days=14),  # Priority 3: last 2 weeks
+        timedelta(days=30),  # Priority 4: last month (only if well within limits)
+    ]
+
+    # Use the requested hours_back as a cap
+    cap = timedelta(hours=hours_back)
+    windows = [w for w in time_windows if w <= cap]
+    if not windows:
+        windows = [cap]
+
+    # Fetch unanalyzed signals within the priority window
+    # Start with the tightest window (3 days)
+    since = now - windows[0]
 
     rows = await conn.fetch("""
         SELECT s.id, s.source, s.source_type, s.subreddit, s.author,
                s.title, s.body, s.upvotes, s.upvote_ratio, s.posted_at
         FROM signals s
-        WHERE s.scraped_at >= $1
+        WHERE s.posted_at >= $1
           AND NOT EXISTS (
               SELECT 1 FROM signal_analyses sa WHERE sa.signal_id = s.id
           )
           AND LENGTH(s.body) >= 30
-        ORDER BY s.upvotes DESC, s.scraped_at DESC
+        ORDER BY s.upvotes DESC, s.posted_at DESC
         LIMIT $2
     """, since, max_signals)
 
+    # If we have budget headroom and not many signals in the tight window, expand
+    if len(rows) < 50 and len(windows) > 1:
+        since = now - windows[1]
+        rows = await conn.fetch("""
+            SELECT s.id, s.source, s.source_type, s.subreddit, s.author,
+                   s.title, s.body, s.upvotes, s.upvote_ratio, s.posted_at
+            FROM signals s
+            WHERE s.posted_at >= $1
+              AND NOT EXISTS (
+                  SELECT 1 FROM signal_analyses sa WHERE sa.signal_id = s.id
+              )
+              AND LENGTH(s.body) >= 30
+            ORDER BY s.upvotes DESC, s.posted_at DESC
+            LIMIT $2
+        """, since, max_signals)
+
     if not rows:
-        log.info("analysis: no unprocessed signals found")
+        log.info("analysis: no unprocessed signals found (all already analyzed)")
         return 0
 
     signals = [dict(r) for r in rows]
+
+    # Deduplicate by body content to avoid re-analyzing near-identical posts
+    seen_bodies: set[str] = set()
+    unique_signals = []
+    for sig in signals:
+        body_key = (sig.get("body") or "")[:100].strip().lower()
+        if body_key and body_key not in seen_bodies:
+            seen_bodies.add(body_key)
+            unique_signals.append(sig)
+    signals = unique_signals
+
     use_ai = bool(ANTHROPIC_KEY or GROQ_KEY)
-    mode = "Claude" if ANTHROPIC_KEY else ("Groq (free)" if GROQ_KEY else "regex (no API)")
-    log.info("analysis: processing %d signals via %s", len(signals), mode)
+    mode = "Claude" if ANTHROPIC_KEY else ("Groq/llama-3.3-70b (free)" if GROQ_KEY else "regex (no API)")
+    log.info("analysis: %d unique unprocessed signals → %s", len(signals), mode)
 
     analyzed = 0
 
